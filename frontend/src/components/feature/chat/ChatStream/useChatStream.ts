@@ -380,14 +380,15 @@ const useChatStream = (channelID: string, scrollRef: MutableRefObject<HTMLDivEle
 
     })
 
-    // When bot response is completed, refresh messages from database to ensure correct ordering
-    useFrappeEventListener('raven:bot_response_completed', (event) => {
-        if (event.channel_id === channelID) {
-            console.log('🤖 Bot response completed, refreshing messages from DB for correct ordering')
-            // Simply trigger a revalidation to fetch fresh data from database
-            mutate()
-        }
-    })
+    // When bot response is completed, just let the normal message_created event handle it
+    // We don't need to refresh the entire chat since the bot message will come through message_created
+    // useFrappeEventListener('raven:bot_response_completed', (event) => {
+    //     if (event.channel_id === channelID) {
+    //         console.log('🤖 Bot response completed, refreshing messages from DB for correct ordering')
+    //         // Use revalidate to fetch fresh data without clearing current data
+    //         mutate(undefined, { revalidate: true })
+    //     }
+    // })
 
     /** Callback to load older messages */
     const loadOlderMessages = () => {
