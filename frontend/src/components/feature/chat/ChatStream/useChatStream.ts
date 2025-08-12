@@ -236,7 +236,13 @@ const useChatStream = (channelID: string, scrollRef: MutableRefObject<HTMLDivEle
                     }
 
                     newMessages.sort((a, b) => {
-                        return new Date(a.creation).getTime() - new Date(b.creation).getTime()
+                        // First try sorting by creation time
+                        const timeDiff = new Date(a.creation).getTime() - new Date(b.creation).getTime()
+                        // If creation times are very close (within 1 second), use name for stable sorting
+                        if (Math.abs(timeDiff) < 1000) {
+                            return a.name.localeCompare(b.name)
+                        }
+                        return timeDiff
                     })
                     return ({
                         message: {

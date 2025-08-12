@@ -639,20 +639,40 @@ def add_forwarded_message_to_channel(channel_id, forwarded_message):
 
 def send_bot_response(channel_id, bot_name, user_message):
 	"""
-	Send a bot response directly (no thinking message)
+	Send a bot response by calling the external API
 	"""
-	print(f"🤖 SENDING DUMMY RESPONSE: Bot {bot_name} responding to '{user_message}'")
+	print(f"🤖 SENDING BOT RESPONSE: Bot {bot_name} responding to '{user_message}'")
+	
+	# Add a small delay to ensure proper message ordering
+	import time
+	time.sleep(0.1)
 	
 	# Make synchronous HTTP request
+	response_text = "I'm currently unavailable. Please try again later."
 	try:
 		response = httpx.post(
 			"http://4.224.78.184/shipment",
-			json={"text": "S00282993"},
+			json={"text": user_message},
 			timeout=10.0
 		)
+		if response.status_code == 200:
+			api_response = response.json()
+			# Use the actual API response as the bot reply
+			if isinstance(api_response, dict) and 'response' in api_response:
+				response_text = api_response['response']
+			elif isinstance(api_response, dict) and 'message' in api_response:
+				response_text = api_response['message']
+			elif isinstance(api_response, str):
+				response_text = api_response
+			else:
+				response_text = str(api_response)
+		else:
+			print(f"❌ API returned status code: {response.status_code}")
+			response_text = "I'm having trouble processing your request right now. Please try again later."
 	except Exception as e:
 		print(f"❌ ERROR making HTTP request: {str(e)}")
 		frappe.log_error(f"Error making HTTP request: {str(e)}", "Bot HTTP Request Error")
+		response_text = "I'm currently experiencing technical difficulties. Please try again later."
 	
 	# Get the bot's Raven User ID
 	bot_raven_user = frappe.db.get_value("Raven Bot", bot_name, "raven_user")
@@ -665,16 +685,6 @@ def send_bot_response(channel_id, bot_name, user_message):
 			user=frappe.session.user
 		)
 		return
-	
-	# Create a simple response based on the user's message
-	if "hello" in user_message.lower() or "hi" in user_message.lower():
-		response_text = f"👋 Hello! I'm Freightify AI. How can I help you today?"
-	elif "?" in user_message:
-		response_text = f"🤔 That's an interesting question! I'm Freightify AI, and I'm here to help with your freight and logistics needs."
-	elif "help" in user_message.lower():
-		response_text = f"📚 I'm Freightify AI, your logistics assistant. I can help you with shipping, tracking, and freight management!"
-	else:
-		response_text = f"🚚 Thanks for your message: '{user_message}'. I'm Freightify AI and I'm ready to assist with your logistics needs!"
 	
 	# Create a new bot response message
 	try:
