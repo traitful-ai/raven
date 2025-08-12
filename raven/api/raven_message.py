@@ -89,16 +89,12 @@ def check_and_send_bot_response(channel, channel_id, text):
 						user=frappe.session.user
 					)
 					
-					# Send immediate "thinking" message
-					thinking_message_id = send_thinking_message(channel_id, raven_user.bot)
-					
-					# Use frappe.enqueue to send actual response after a small delay
+					# Use frappe.enqueue to send actual response directly (no thinking message)
 					frappe.enqueue(
 						send_bot_response,
 						channel_id=channel_id,
 						bot_name=raven_user.bot,
 						user_message=text,
-						thinking_message_id=thinking_message_id,
 						queue="short",
 						timeout=30,
 						is_async=True
@@ -641,38 +637,9 @@ def add_forwarded_message_to_channel(channel_id, forwarded_message):
 	return "message forwarded"
 
 
-def send_thinking_message(channel_id, bot_raven_user):
+def send_bot_response(channel_id, bot_name, user_message):
 	"""
-	Send an immediate "thinking" message that will be replaced later
-	"""
-	try:
-		# Add a small delay to ensure the thinking message comes after the user's message
-		import time
-		time.sleep(0.1)
-		
-		thinking_doc = frappe.get_doc({
-			"doctype": "Raven Message",
-			"channel_id": channel_id,
-			"text": "🤔 Freightify AI is working on your request...",
-			"message_type": "Text",
-			"owner": bot_raven_user,
-			"is_bot_message": 1,
-			"bot": bot_raven_user
-		})
-		thinking_doc.insert(ignore_permissions=True)
-		print(f"💭 THINKING MESSAGE SENT: {thinking_doc.name}")
-		
-		return thinking_doc.name
-		
-	except Exception as e:
-		print(f"❌ ERROR sending thinking message: {str(e)}")
-		frappe.log_error(f"Error sending thinking message: {str(e)}", "Bot Thinking Message Error")
-		return None
-
-
-def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=None):
-	"""
-	Send a dummy bot response for testing purposes
+	Send a bot response directly (no thinking message)
 	"""
 	print(f"🤖 SENDING DUMMY RESPONSE: Bot {bot_name} responding to '{user_message}'")
 	
@@ -709,29 +676,20 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 	else:
 		response_text = f"🚚 Thanks for your message: '{user_message}'. I'm Freightify AI and I'm ready to assist with your logistics needs!"
 	
-	# Update the thinking message if it exists, otherwise create a new message
+	# Create a new bot response message
 	try:
-		if thinking_message_id:
-			# Replace the thinking message with the actual response
-			thinking_doc = frappe.get_doc("Raven Message", thinking_message_id)
-			thinking_doc.text = response_text
-			thinking_doc.save(ignore_permissions=True)
-			print(f"✅ SUCCESS: Thinking message updated with bot response!")
-			message_id = thinking_message_id
-		else:
-			# Create a new message if no thinking message exists
-			response_doc = frappe.get_doc({
-				"doctype": "Raven Message",
-				"channel_id": channel_id,
-				"text": response_text,
-				"message_type": "Text",
-				"owner": bot_raven_user,
-				"is_bot_message": 1,
-				"bot": bot_raven_user
-			})
-			response_doc.insert(ignore_permissions=True)
-			print(f"✅ SUCCESS: New bot response sent successfully!")
-			message_id = response_doc.name
+		response_doc = frappe.get_doc({
+			"doctype": "Raven Message",
+			"channel_id": channel_id,
+			"text": response_text,
+			"message_type": "Text",
+			"owner": bot_raven_user,
+			"is_bot_message": 1,
+			"bot": bot_raven_user
+		})
+		response_doc.insert(ignore_permissions=True)
+		print(f"✅ SUCCESS: Bot response sent successfully!")
+		message_id = response_doc.name
 		
 		# Emit real-time event that bot response is completed
 		frappe.publish_realtime(
