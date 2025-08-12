@@ -236,13 +236,7 @@ const useChatStream = (channelID: string, scrollRef: MutableRefObject<HTMLDivEle
                     }
 
                     newMessages.sort((a, b) => {
-                        // First try sorting by creation time
-                        const timeDiff = new Date(a.creation).getTime() - new Date(b.creation).getTime()
-                        // If creation times are very close (within 1 second), use name for stable sorting
-                        if (Math.abs(timeDiff) < 1000) {
-                            return a.name.localeCompare(b.name)
-                        }
-                        return timeDiff
+                        return new Date(a.creation).getTime() - new Date(b.creation).getTime()
                     })
                     return ({
                         message: {
@@ -384,6 +378,15 @@ const useChatStream = (channelID: string, scrollRef: MutableRefObject<HTMLDivEle
             revalidate: false
         })
 
+    })
+
+    // When bot response is completed, refresh messages from database to ensure correct ordering
+    useFrappeEventListener('raven:bot_response_completed', (event) => {
+        if (event.channel_id === channelID) {
+            console.log('🤖 Bot response completed, refreshing messages from DB for correct ordering')
+            // Simply trigger a revalidation to fetch fresh data from database
+            mutate()
+        }
     })
 
     /** Callback to load older messages */

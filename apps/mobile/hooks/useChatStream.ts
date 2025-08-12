@@ -280,6 +280,15 @@ const useChatStream = (channelID: string, listRef?: React.RefObject<LegendListRe
 
     })
 
+    // When bot response is completed, refresh messages from database to ensure correct ordering
+    useFrappeEventListener('raven:bot_response_completed', (event) => {
+        if (event.channel_id === channelID) {
+            console.log('🤖 Bot response completed, refreshing messages from DB for correct ordering')
+            // Simply trigger a revalidation to fetch fresh data from database
+            mutate()
+        }
+    })
+
     const trackVisit = useTrackChannelVisit(channelID, isThread)
     /**
      * Track visit when unmounting if new messages were loaded.

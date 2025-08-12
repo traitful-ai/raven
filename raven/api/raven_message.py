@@ -643,10 +643,6 @@ def send_bot_response(channel_id, bot_name, user_message):
 	"""
 	print(f"🤖 SENDING BOT RESPONSE: Bot {bot_name} responding to '{user_message}'")
 	
-	# Add a small delay to ensure proper message ordering
-	import time
-	time.sleep(0.1)
-	
 	# Make synchronous HTTP request
 	response_text = "I'm currently unavailable. Please try again later."
 	try:
