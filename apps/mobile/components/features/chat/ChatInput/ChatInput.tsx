@@ -104,8 +104,9 @@ const ChatInput = ({ channelID, onSendMessage }: ChatInputProps) => {
                 <MentionInput
                     value={content}
                     multiline
+                    editable={!loading}
                     placeholderTextColor={colors.grey}
-                    placeholder="Type a message..."
+                    placeholder={loading ? "Waiting for response..." : "Type a message..."}
                     onChange={onContentChange}
                     partTypes={[
                         {

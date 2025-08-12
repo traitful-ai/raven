@@ -416,7 +416,7 @@ const useChatStream = (channelID: string, listRef?: React.RefObject<LegendListRe
             })
         }
 
-        if (messages.length > 0) {
+        if (messages.length > 0 && messages[messages.length - 1]?.creation) {
             let currentDate = messages[messages.length - 1].creation.split(' ')[0]
             let currentDateTime = new Date(messages[messages.length - 1].creation.split('.')[0]).getTime()
 
@@ -441,6 +441,8 @@ const useChatStream = (channelID: string, listRef?: React.RefObject<LegendListRe
             // Loop through the messages and add date separators if the date changes
             for (let i = messages.length - 2; i >= 0; i--) {
                 const message = messages[i]
+                if (!message?.creation) continue // Skip messages without creation property
+                
                 const messageDate = message.creation.split(' ')[0]
                 let messageDateTime = new Date(message.creation.split('.')[0]).getTime()
                 const formattedMessageTime = dayjs(message.creation).local().format('hh:mm A')

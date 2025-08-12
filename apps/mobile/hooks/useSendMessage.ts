@@ -1,19 +1,38 @@
-import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
+import { useFrappePostCall, useSWRConfig, useFrappeEventListener } from 'frappe-react-sdk'
 import useFileUpload from '@raven/lib/hooks/useFileUpload'
 import { useAtomValue } from 'jotai'
 import { selectedReplyMessageAtomFamily } from '@lib/ChatInputUtils'
 import { RavenMessage } from '@raven/types/RavenMessaging/RavenMessage'
 import { GetMessagesResponse } from '@raven/types/common/ChatStream'
+import { useState, useEffect } from 'react'
 
 // TODO: This is older version of the useSendMessage hook compared to web, needs to be updated.
 export const useSendMessage = (siteID: string, channelID: string, onSend: VoidFunction) => {
 
-
     const selectedMessage = useAtomValue(selectedReplyMessageAtomFamily(siteID + channelID))
     const { uploadFiles } = useFileUpload(siteID, channelID)
-    const { call, loading } = useFrappePostCall('raven.api.raven_message.send_message')
+    const { call, loading: apiLoading } = useFrappePostCall('raven.api.raven_message.send_message')
+
+    // Additional state to track if we're waiting for a bot response
+    const [waitingForBotResponse, setWaitingForBotResponse] = useState(false)
+    
+    // Combined loading state that includes both API call and bot response
+    const loading = apiLoading || waitingForBotResponse
 
     const onMessageSendCompleted = useOnMessageSendCompleted(channelID)
+
+    // Listen for bot response completion events
+    useFrappeEventListener('raven:bot_response_completed', (event: { channel_id: string, success: boolean, message_id?: string }) => {
+        if (event.channel_id === channelID) {
+            console.log('🤖 Bot response completed for channel:', channelID, 'Success:', event.success)
+            setWaitingForBotResponse(false)
+        }
+    })
+
+    // Clean up bot waiting state if channel changes
+    useEffect(() => {
+        setWaitingForBotResponse(false)
+    }, [channelID])
 
     const sendMessage = async (content: string, sendWithoutFiles = false, sendSilently = false): Promise<void> => {
 
@@ -26,9 +45,15 @@ export const useSendMessage = (siteID: string, channelID: string, onSend: VoidFu
                 linked_message: selectedMessage ? selectedMessage.name : null,
                 send_silently: sendSilently
             })
-                .then((res) => {
-                    onMessageSendCompleted([res.message])
+                .then((res: any) => {
+                    onMessageSendCompleted([res])
                     onSend()
+                    
+                    // If the response indicates a bot is responding, set waiting state
+                    if (res.bot_is_responding) {
+                        console.log('🤖 Bot is responding, blocking input until response is received')
+                        setWaitingForBotResponse(true)
+                    }
                 })
                 .then(() => {
                     if (!sendWithoutFiles) {

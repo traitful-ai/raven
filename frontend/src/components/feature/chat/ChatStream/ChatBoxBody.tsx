@@ -18,6 +18,7 @@ import { useParams } from "react-router-dom"
 import clsx from "clsx"
 import { HStack, Stack } from "@/components/layout/Stack"
 import TypingIndicator from "../ChatInput/TypingIndicator/TypingIndicator"
+import BotResponseIndicator from "../ChatInput/TypingIndicator/BotResponseIndicator"
 import { useTyping } from "../ChatInput/TypingIndicator/useTypingIndicator"
 import { Label } from "@/components/common/Form"
 import { RavenMessage } from "@/types/RavenMessaging/RavenMessage"
@@ -233,6 +234,7 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
                 {canUserSendMessage &&
                     <Stack>
                         <TypingIndicator channel={channelData.name} />
+                        <BotResponseIndicator channel={channelData.name} />
                         <Tiptap
                             key={channelData.name}
                             channelID={channelData.name}

@@ -508,7 +508,7 @@ const useChatStream = (channelID: string, scrollRef: MutableRefObject<HTMLDivEle
 
             // Add `is_continuation` to the messages that are only apart by 2 minutes
             const messagesWithDateSeparators: MessageDateBlock[] = []
-            if (messages.length > 0) {
+            if (messages.length > 0 && messages[messages.length - 1]?.creation) {
                 let currentDate = messages[messages.length - 1].creation.split(' ')[0]
                 let currentDateTime = new Date(messages[messages.length - 1].creation.split('.')[0]).getTime()
 
@@ -528,6 +528,8 @@ const useChatStream = (channelID: string, scrollRef: MutableRefObject<HTMLDivEle
                 for (let i = messages.length - 2; i >= 0; i--) {
 
                     const message = messages[i]
+                    if (!message?.creation) continue // Skip messages without creation property
+                    
                     const messageDate = message.creation.split(' ')[0]
                     let messageDateTime = new Date(message.creation.split('.')[0]).getTime()
 

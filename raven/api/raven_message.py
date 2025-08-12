@@ -47,14 +47,19 @@ def send_message(
 	doc.insert()
 	
 	# After the user's message is inserted, check if we need to send a bot response
-	check_and_send_bot_response(channel, channel_id, text)
+	bot_is_responding = check_and_send_bot_response(channel, channel_id, text)
 	
-	return doc
+	# Return the document with additional bot response info
+	response = doc.as_dict()
+	response['bot_is_responding'] = bot_is_responding
+	
+	return response
 
 
 def check_and_send_bot_response(channel, channel_id, text):
 	"""
 	Check if this is a DM with CargoWiseBot and send a response if needed
+	Returns True if a bot is responding, False otherwise
 	"""
 	# Check if this is a DM with a bot
 	if channel.is_direct_message:
@@ -91,9 +96,13 @@ def check_and_send_bot_response(channel, channel_id, text):
 						timeout=30,
 						is_async=True
 					)
+					
+					return True  # Bot is responding
 				else:
 					print(f"❌ NOT CARGOWISE BOT: Ignoring message to {bot_name}")
 				break
+	
+	return False  # No bot response
 
 
 @frappe.whitelist()
@@ -641,6 +650,14 @@ def send_thinking_message(channel_id, bot_raven_user):
 		})
 		thinking_doc.insert(ignore_permissions=True)
 		print(f"💭 THINKING MESSAGE SENT: {thinking_doc.name}")
+		
+		# Emit real-time event that bot started responding
+		frappe.publish_realtime(
+			"raven:bot_response_started",
+			{"channel_id": channel_id},
+			user=frappe.session.user
+		)
+		
 		return thinking_doc.name
 		
 	except Exception as e:
@@ -670,6 +687,12 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 	bot_raven_user = frappe.db.get_value("Raven Bot", bot_name, "raven_user")
 	if not bot_raven_user:
 		print(f"❌ ERROR: Could not find raven_user for bot {bot_name}")
+		# Emit bot response completed event even on error
+		frappe.publish_realtime(
+			"raven:bot_response_completed",
+			{"channel_id": channel_id, "success": False},
+			user=frappe.session.user
+		)
 		return
 	
 	# Create a simple response based on the user's message
@@ -690,7 +713,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			thinking_doc.text = response_text
 			thinking_doc.save(ignore_permissions=True)
 			print(f"✅ SUCCESS: Thinking message updated with bot response!")
-			return thinking_message_id
+			message_id = thinking_message_id
 		else:
 			# Create a new message if no thinking message exists
 			response_doc = frappe.get_doc({
@@ -704,8 +727,27 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			})
 			response_doc.insert(ignore_permissions=True)
 			print(f"✅ SUCCESS: New bot response sent successfully!")
-			return response_doc.name
+			message_id = response_doc.name
+		
+		# Emit real-time event that bot response is completed
+		frappe.publish_realtime(
+			"raven:bot_response_completed",
+			{
+				"channel_id": channel_id, 
+				"success": True,
+				"message_id": message_id
+			},
+			user=frappe.session.user
+		)
+		return message_id
 		
 	except Exception as e:
 		print(f"❌ ERROR sending bot response: {str(e)}")
 		frappe.log_error(f"Error sending dummy bot response: {str(e)}", "Bot Response Error")
+		
+		# Emit bot response completed event even on error
+		frappe.publish_realtime(
+			"raven:bot_response_completed",
+			{"channel_id": channel_id, "success": False},
+			user=frappe.session.user
+		)
