@@ -21,6 +21,14 @@ export const useSendMessage = (channelID: string, uploadFiles: (selectedMessage?
         return get(filesAtom(channelID))
     }, [channelID]))
 
+    // Listen for bot response events
+    useFrappeEventListener('raven:bot_response_started', (event: { channel_id: string }) => {
+        if (event.channel_id === channelID) {
+            console.log('🤖 Bot response started for channel:', channelID)
+            setWaitingForBotResponse(true)
+        }
+    })
+
     // Listen for bot response completion events
     useFrappeEventListener('raven:bot_response_completed', (event: { channel_id: string, success: boolean, message_id?: string }) => {
         if (event.channel_id === channelID) {

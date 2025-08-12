@@ -534,10 +534,17 @@ const Tiptap = forwardRef(({ isEdit, slotBefore, fileProps, onMessageSend, onUpA
         },
         onUpdate({ editor }) {
             setContent(editor.getHTML())
+        },
+        editable: !messageSending
+    }, [replyMessage, onUserType, messageSending])
+
+
+
+    useEffect(() => {
+        if (editor) {
+            editor.setEditable(!messageSending)
         }
-    }, [replyMessage, onUserType])
-
-
+    }, [editor, messageSending])
 
     useEffect(() => {
         if (isDesktop || isEdit) {

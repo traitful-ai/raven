@@ -82,6 +82,13 @@ def check_and_send_bot_response(channel, channel_id, text):
 				if bot_name == "CargoWiseBot":
 					print(f"✅ CARGOWISE BOT DETECTED: Sending response")
 					
+					# Emit real-time event that bot started responding IMMEDIATELY
+					frappe.publish_realtime(
+						"raven:bot_response_started",
+						{"channel_id": channel_id},
+						user=frappe.session.user
+					)
+					
 					# Send immediate "thinking" message
 					thinking_message_id = send_thinking_message(channel_id, raven_user.bot)
 					
@@ -639,6 +646,10 @@ def send_thinking_message(channel_id, bot_raven_user):
 	Send an immediate "thinking" message that will be replaced later
 	"""
 	try:
+		# Add a small delay to ensure the thinking message comes after the user's message
+		import time
+		time.sleep(0.1)
+		
 		thinking_doc = frappe.get_doc({
 			"doctype": "Raven Message",
 			"channel_id": channel_id,
@@ -650,13 +661,6 @@ def send_thinking_message(channel_id, bot_raven_user):
 		})
 		thinking_doc.insert(ignore_permissions=True)
 		print(f"💭 THINKING MESSAGE SENT: {thinking_doc.name}")
-		
-		# Emit real-time event that bot started responding
-		frappe.publish_realtime(
-			"raven:bot_response_started",
-			{"channel_id": channel_id},
-			user=frappe.session.user
-		)
 		
 		return thinking_doc.name
 		
