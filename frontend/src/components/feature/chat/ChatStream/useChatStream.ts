@@ -236,7 +236,7 @@ const useChatStream = (channelID: string, scrollRef: MutableRefObject<HTMLDivEle
                     }
 
                     newMessages.sort((a, b) => {
-                        return new Date(b.creation).getTime() - new Date(a.creation).getTime()
+                        return new Date(a.creation).getTime() - new Date(b.creation).getTime()
                     })
                     return ({
                         message: {
