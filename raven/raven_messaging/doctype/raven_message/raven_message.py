@@ -196,6 +196,9 @@ class RavenMessage(Document):
 			last_message_details = self.set_last_message_timestamp()
 			self.publish_unread_count_event(last_message_details)
 
+		# Publish message_created event for new messages
+		self.publish_message_created_event()
+
 		if self.message_type == "Text":
 			self.handle_ai_message()
 
@@ -362,6 +365,69 @@ class RavenMessage(Document):
 				after_commit=True,
 				room=get_raven_room(),
 			)
+
+	def publish_message_created_event(self):
+		"""
+		Publish the message_created event for new messages
+		"""
+		after_commit = False
+		if self.message_type == "File" or self.message_type == "Image":
+			# If the message is a file or an image, then we need to wait for the file to be uploaded
+			after_commit = True
+			if not self.file:
+				return
+
+		if self.message_type == "Poll" or (self.link_doctype and self.link_document):
+			# If the message is a poll, then we need to wait for the poll to be created
+			after_commit = True
+
+		frappe.publish_realtime(
+			"message_created",
+			{
+				"channel_id": self.channel_id,
+				"sender": frappe.session.user,
+				"message_id": self.name,
+				"message_details": {
+					"text": self.text,
+					"channel_id": self.channel_id,
+					"content": self.content,
+					"file": self.file,
+					"message_type": self.message_type,
+					"is_edited": 1 if self.is_edited else 0,
+					"is_thread": self.is_thread,
+					"is_forwarded": self.is_forwarded,
+					"is_reply": self.is_reply,
+					"poll_id": self.poll_id,
+					"creation": self.creation,
+					"owner": self.owner,
+					"modified_by": self.modified_by,
+					"modified": self.modified,
+					"linked_message": self.linked_message,
+					"replied_message_details": self.replied_message_details,
+					"link_doctype": self.link_doctype,
+					"link_document": self.link_document,
+					"message_reactions": self.message_reactions,
+					"thumbnail_width": self.thumbnail_width,
+					"thumbnail_height": self.thumbnail_height,
+					"file_thumbnail": self.file_thumbnail,
+					"image_width": self.image_width,
+					"image_height": self.image_height,
+					"name": self.name,
+					"is_bot_message": self.is_bot_message,
+					"bot": self.bot,
+					"hide_link_preview": self.hide_link_preview,
+					"blurhash": self.blurhash,
+				},
+			},
+			doctype="Raven Channel",
+			# Adding this to automatically add the room for the event via Frappe
+			docname=self.channel_id,
+			after_commit=after_commit,
+		)
+
+		if self.message_type != "System" and not self.is_bot_message:
+			# track the visit of the user to the channel if a new message is created
+			track_channel_visit(channel_id=self.channel_id, user=self.owner)
 
 	def add_mentioned_users_to_thread(self):
 		"""
