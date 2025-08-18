@@ -657,9 +657,8 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 	
 	# Make synchronous HTTP request
 	try:
-		response = httpx.post(
-			"http://4.224.78.184/shipment",
-			json={"text": "S00282993"},
+		response = httpx.get(
+			"http://4.224.78.184/client_g73trn_1754370634/shipment/SGDEHAM016834",
 			timeout=10.0
 		)
 	except Exception as e:
@@ -680,7 +679,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 	elif "help" in user_message.lower():
 		response_text = f"📚 I'm Freightify AI, your logistics assistant. I can help you with shipping, tracking, and freight management!"
 	else:
-		response_text = f"🚚 Thanks for your message: '{user_message}'. I'm Freightify AI and I'm ready to assist with your logistics needs!"
+		response_text = f"🚚 I'm Freightify AI and I'm ready to assist with your logistics needs!"
 	
 	# Update the thinking message if it exists, otherwise create a new message
 	try:
