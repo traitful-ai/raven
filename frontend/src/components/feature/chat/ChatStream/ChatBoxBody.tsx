@@ -24,6 +24,8 @@ import { RavenMessage } from "@/types/RavenMessaging/RavenMessage"
 import { useSWRConfig } from "frappe-react-sdk"
 import { GetMessagesResponse } from "./useChatStream"
 import { useIsMobile } from "@/hooks/useMediaQuery"
+import { useCargoWiseBotDetection } from "@/hooks/useCargoWiseBotDetection"
+import { ShipmentPanel } from "../ShipmentPanel/ShipmentPanel"
 
 const COOL_PLACEHOLDERS = [
     "Delivering messages atop dragons 🐉 is available on a chargeable basis.",
@@ -44,6 +46,12 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
 
     const { name: user } = useUserData()
     const { channelMembers, isLoading } = useFetchChannelMembers(channelData.name)
+
+    // Check if this is a DM with CargoWiseBot
+    const { isCargoWiseBotChannel } = useCargoWiseBotDetection(
+        channelData.name, 
+        channelData?.is_direct_message === 1
+    )
 
     const { onUserType, stopTyping } = useTyping(channelData.name)
 
@@ -230,6 +238,9 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
                     pinnedMessagesString={channelData.pinned_messages_string}
                     replyToMessage={handleReplyAction}
                 />
+                {isCargoWiseBotChannel && (
+                    <ShipmentPanel channelID={channelData.name} />
+                )}
                 {canUserSendMessage &&
                     <Stack>
                         <TypingIndicator channel={channelData.name} />
