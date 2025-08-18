@@ -9,7 +9,18 @@ interface ShipmentPanelProps {
 
 export const ShipmentPanel = ({ channelID }: ShipmentPanelProps) => {
     const [isExpanded, setIsExpanded] = useState(true)
-    const { latestBotMessage, jsonData, isLoading } = useLatestBotMessage(channelID, 'CargoWiseBot')
+    const { latestBotMessage, jsonData, isLoading, error } = useLatestBotMessage(channelID, 'CargoWiseBot')
+
+    // Debug logging
+    console.log('ShipmentPanel Debug:', {
+        channelID,
+        isLoading,
+        error,
+        hasLatestBotMessage: !!latestBotMessage,
+        latestBotMessageText: latestBotMessage?.text?.substring(0, 100),
+        hasJsonData: !!jsonData,
+        jsonData
+    })
 
     const renderValue = (value: any) => {
         if (value === null || value === undefined) {
@@ -91,13 +102,23 @@ export const ShipmentPanel = ({ channelID }: ShipmentPanelProps) => {
                                 </Table.Root>
                             </Box>
                         ) : latestBotMessage ? (
-                            <Text size="2" className="text-blue-600 dark:text-blue-300">
-                                Latest bot message doesn't contain valid JSON data
-                            </Text>
+                            <Box>
+                                <Text size="2" className="text-blue-600 dark:text-blue-300">
+                                    Latest bot message doesn't contain valid JSON data
+                                </Text>
+                                <Text size="1" className="text-gray-500 mt-2 font-mono">
+                                    Debug: Bot message text: {latestBotMessage.text?.substring(0, 200)}...
+                                </Text>
+                            </Box>
                         ) : (
-                            <Text size="2" className="text-blue-600 dark:text-blue-300">
-                                No bot messages found in this channel
-                            </Text>
+                            <Box>
+                                <Text size="2" className="text-blue-600 dark:text-blue-300">
+                                    No bot messages found in this channel
+                                </Text>
+                                <Text size="1" className="text-gray-500 mt-2">
+                                    Debug: Loading={isLoading ? 'true' : 'false'}, Error={error ? 'yes' : 'no'}
+                                </Text>
+                            </Box>
                         )}
                     </Stack>
                 </Box>
