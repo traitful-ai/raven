@@ -661,6 +661,10 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			"http://4.224.78.184/client_g73trn_1754370634/shipment/SGDEHAM016834",
 			timeout=10.0
 		)
+		if response.status_code == 200:
+			response_text = response.text
+		else:
+			response_text = f"API returned status code: {response.status_code}"
 	except Exception as e:
 		print(f"❌ ERROR making HTTP request: {str(e)}")
 		frappe.log_error(f"Error making HTTP request: {str(e)}", "Bot HTTP Request Error")
@@ -671,15 +675,10 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 		print(f"❌ ERROR: Could not find raven_user for bot {bot_name}")
 		return
 	
-	# Create a simple response based on the user's message
-	if "hello" in user_message.lower() or "hi" in user_message.lower():
-		response_text = f"👋 Hello! I'm Freightify AI. How can I help you today?"
-	elif "?" in user_message:
-		response_text = f"🤔 That's an interesting question! I'm Freightify AI, and I'm here to help with your freight and logistics needs."
-	elif "help" in user_message.lower():
-		response_text = f"📚 I'm Freightify AI, your logistics assistant. I can help you with shipping, tracking, and freight management!"
-	else:
-		response_text = f"🚚 I'm Freightify AI and I'm ready to assist with your logistics needs!"
+	# # Create a simple response based on the user's message
+	# if "hello" in user_message.lower() or "hi" in user_message.lower():
+	# 	response_text = f"👋 Hello! I'm Freightify AI. How can I help you today?"
+
 	
 	# Update the thinking message if it exists, otherwise create a new message
 	try:
