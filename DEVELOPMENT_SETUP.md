@@ -170,7 +170,7 @@ cd /Users/notashutosh/Documents/GitHub/raven-bench
 # Remove and reinstall app
 bench --site raven.test uninstall-app raven
 bench remove-app raven
-bench get-app --branch develop https://github.com/traitful-ai/raven.git
+bench get-app --branch main https://github.com/traitful-ai/raven.git
 bench --site raven.test install-app raven
 bench start
 ```
