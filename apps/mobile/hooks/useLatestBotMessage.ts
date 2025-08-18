@@ -10,7 +10,7 @@ interface GetMessagesResponse {
 }
 
 export const useLatestBotMessage = (channelID: string, botName?: string) => {
-    const { data, error, isLoading } = useFrappeGetCall<GetMessagesResponse>('raven.api.raven_message.get_messages', {
+    const { data, error, isLoading } = useFrappeGetCall<GetMessagesResponse>('raven.api.chat_stream.get_messages', {
         channel_id: channelID,
         limit_start: 0,
         limit_page_length: 20 // Get last 20 messages to find the most recent bot message
