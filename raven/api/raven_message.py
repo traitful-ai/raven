@@ -755,13 +755,18 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 	
 	# Update the thinking message if it exists, otherwise create a new message
 	try:
+		# Get the bot document to use its send_message method with markdown support
+		bot_doc = frappe.get_doc("Raven Bot", bot_name)
+		
 		if thinking_message_id:
-			# Replace the thinking message with the actual response
+			# Replace the thinking message with the actual response using markdown
 			thinking_doc = frappe.get_doc("Raven Message", thinking_message_id)
-			thinking_doc.text = response_text
+			# Convert markdown to HTML using the same method as bot.send_message
+			html_text = frappe.utils.md_to_html(response_text).rstrip("\n")
+			thinking_doc.text = html_text
 			thinking_doc.save(ignore_permissions=True)
 			frappe.db.commit()  # Ensure the change is committed
-			print(f"✅ SUCCESS: Thinking message updated with bot response!")
+			print(f"✅ SUCCESS: Thinking message updated with bot response (markdown converted)!")
 			
 			# Emit bot processing end event
 			print(f"🔔 EMITTING bot_processing_end for channel {channel_id} (thinking message updated)")
@@ -778,19 +783,14 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			
 			return thinking_message_id
 		else:
-			# Create a new message if no thinking message exists
-			response_doc = frappe.get_doc({
-				"doctype": "Raven Message",
-				"channel_id": channel_id,
-				"text": response_text,
-				"message_type": "Text",
-				"owner": bot_raven_user,
-				"is_bot_message": 1,
-				"bot": bot_raven_user
-			})
-			response_doc.insert(ignore_permissions=True)
+			# Create a new message using the bot's send_message method with markdown support
+			message_id = bot_doc.send_message(
+				channel_id=channel_id,
+				text=response_text,
+				markdown=True
+			)
 			frappe.db.commit()  # Ensure the change is committed
-			print(f"✅ SUCCESS: New bot response sent successfully!")
+			print(f"✅ SUCCESS: New bot response sent successfully with markdown support!")
 			
 			# Emit bot processing end event
 			print(f"🔔 EMITTING bot_processing_end for channel {channel_id} (new message created)")
@@ -805,7 +805,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 				after_commit=True
 			)
 			
-			return response_doc.name
+			return message_id
 		
 	except Exception as e:
 		print(f"❌ ERROR sending bot response: {str(e)}")
