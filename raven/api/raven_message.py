@@ -683,6 +683,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			poll_interval = 2  # Seconds between polls
 			
 			for attempt in range(max_attempts):
+				print(f'ATTEMPTING TO POLL {attempt + 1}')
 				try:
 					status_response = httpx.get(
 						f"http://chat.freightify.traitful.ai/api/v1/chat/{user_id}/{thread_id}/messages/{message_id}",
