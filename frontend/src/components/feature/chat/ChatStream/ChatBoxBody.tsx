@@ -19,6 +19,7 @@ import clsx from "clsx"
 import { HStack, Stack } from "@/components/layout/Stack"
 import TypingIndicator from "../ChatInput/TypingIndicator/TypingIndicator"
 import { useTyping } from "../ChatInput/TypingIndicator/useTypingIndicator"
+import { useBotProcessingState } from "@/hooks/useBotProcessingState"
 import { Label } from "@/components/common/Form"
 import { RavenMessage } from "@/types/RavenMessaging/RavenMessage"
 import { useSWRConfig } from "frappe-react-sdk"
@@ -160,6 +161,9 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
 
     const { sendMessage, loading } = useSendMessage(channelData.name, uploadFiles, onMessageSendCompleted, selectedMessage)
 
+    // Track bot processing state for this channel
+    const { isProcessing: isBotProcessing } = useBotProcessingState(channelData.name)
+
     const PreviousMessagePreview = ({ selectedMessage }: { selectedMessage: any }) => {
 
         if (selectedMessage) {
@@ -260,7 +264,7 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
                             replyMessage={selectedMessage}
                             sessionStorageKey={`tiptap-${channelData.name}`}
                             onMessageSend={sendMessage}
-                            messageSending={loading}
+                            messageSending={loading || isBotProcessing}
                             slotBefore={<Flex direction='column' justify='center' hidden={!selectedMessage && !files.length}>
                                 {selectedMessage && <PreviousMessagePreview selectedMessage={selectedMessage} />}
                                 {files && files.length > 0 && <Flex gap='2' width='100%' align='stretch' px='2' p='2' wrap='wrap'>

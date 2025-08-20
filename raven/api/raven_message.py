@@ -78,6 +78,18 @@ def check_and_send_bot_response(channel, channel_id, text):
 				if bot_name == "CargoWiseBot":
 					print(f"✅ CARGOWISE BOT DETECTED: Sending response")
 					
+					# Emit bot processing start event
+					frappe.publish_realtime(
+						"bot_processing_start",
+						{
+							"channel_id": channel_id,
+							"bot_name": bot_name
+						},
+						doctype="Raven Channel",
+						docname=channel_id,
+						after_commit=True
+					)
+					
 					# Send immediate "thinking" message
 					thinking_message_id = send_thinking_message(channel_id, raven_user.bot)
 					
@@ -734,6 +746,18 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 		print(f"❌ ERROR making HTTP request: {str(e)}")
 		frappe.log_error(f"Error making HTTP request: {str(e)}", "Bot HTTP Request Error")
 		response_text = "Sorry, I'm experiencing technical difficulties."
+		
+		# Emit bot processing end event even if the initial request fails
+		frappe.publish_realtime(
+			"bot_processing_end",
+			{
+				"channel_id": channel_id,
+				"bot_name": bot_name
+			},
+			doctype="Raven Channel",
+			docname=channel_id,
+			after_commit=True
+		)
 	
 	# Get the bot's Raven User ID
 	bot_raven_user = frappe.db.get_value("Raven Bot", bot_name, "raven_user")
@@ -750,6 +774,19 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			thinking_doc.save(ignore_permissions=True)
 			frappe.db.commit()  # Ensure the change is committed
 			print(f"✅ SUCCESS: Thinking message updated with bot response!")
+			
+			# Emit bot processing end event
+			frappe.publish_realtime(
+				"bot_processing_end",
+				{
+					"channel_id": channel_id,
+					"bot_name": bot_name
+				},
+				doctype="Raven Channel",
+				docname=channel_id,
+				after_commit=True
+			)
+			
 			return thinking_message_id
 		else:
 			# Create a new message if no thinking message exists
@@ -765,9 +802,35 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			response_doc.insert(ignore_permissions=True)
 			frappe.db.commit()  # Ensure the change is committed
 			print(f"✅ SUCCESS: New bot response sent successfully!")
+			
+			# Emit bot processing end event
+			frappe.publish_realtime(
+				"bot_processing_end",
+				{
+					"channel_id": channel_id,
+					"bot_name": bot_name
+				},
+				doctype="Raven Channel",
+				docname=channel_id,
+				after_commit=True
+			)
+			
 			return response_doc.name
 		
 	except Exception as e:
 		print(f"❌ ERROR sending bot response: {str(e)}")
 		frappe.log_error(f"Error sending bot response: {str(e)}", "Bot Response Error")
+		
+		# Emit bot processing end event even on error
+		frappe.publish_realtime(
+			"bot_processing_end",
+			{
+				"channel_id": channel_id,
+				"bot_name": bot_name
+			},
+			doctype="Raven Channel",
+			docname=channel_id,
+			after_commit=True
+		)
+		
 		return None
