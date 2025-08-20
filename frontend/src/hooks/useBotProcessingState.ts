@@ -19,6 +19,7 @@ export const useBotProcessingState = (channelID: string): BotProcessingState => 
     // Listen for bot processing start events
     useFrappeEventListener("bot_processing_start", (data) => {
         if (data.channel_id === channelID) {
+            console.log(`🔔 Frontend received bot_processing_start for channel ${channelID}:`, data)
             setProcessingState({
                 isProcessing: true,
                 botName: data.bot_name
@@ -29,6 +30,7 @@ export const useBotProcessingState = (channelID: string): BotProcessingState => 
     // Listen for bot processing end events
     useFrappeEventListener("bot_processing_end", (data) => {
         if (data.channel_id === channelID) {
+            console.log(`🔔 Frontend received bot_processing_end for channel ${channelID}:`, data)
             setProcessingState({
                 isProcessing: false,
                 botName: undefined

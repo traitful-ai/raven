@@ -1,5 +1,5 @@
 import { Message } from "../../../../../../types/Messaging/Message"
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ArchivedChannelBox } from "../chat-footer/ArchivedChannelBox"
 import { ChannelListItem, DMChannelListItem } from "@/utils/channel/ChannelListProvider"
 import { JoinChannelBox } from "../chat-footer/JoinChannelBox"
@@ -163,6 +163,11 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
 
     // Track bot processing state for this channel
     const { isProcessing: isBotProcessing } = useBotProcessingState(channelData.name)
+    
+    // Debug logging for bot processing state
+    useEffect(() => {
+        console.log(`🔔 Bot processing state changed for channel ${channelData.name}:`, isBotProcessing)
+    }, [isBotProcessing, channelData.name])
 
     const PreviousMessagePreview = ({ selectedMessage }: { selectedMessage: any }) => {
 

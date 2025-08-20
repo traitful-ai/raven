@@ -746,18 +746,6 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 		print(f"❌ ERROR making HTTP request: {str(e)}")
 		frappe.log_error(f"Error making HTTP request: {str(e)}", "Bot HTTP Request Error")
 		response_text = "Sorry, I'm experiencing technical difficulties."
-		
-		# Emit bot processing end event even if the initial request fails
-		frappe.publish_realtime(
-			"bot_processing_end",
-			{
-				"channel_id": channel_id,
-				"bot_name": bot_name
-			},
-			doctype="Raven Channel",
-			docname=channel_id,
-			after_commit=True
-		)
 	
 	# Get the bot's Raven User ID
 	bot_raven_user = frappe.db.get_value("Raven Bot", bot_name, "raven_user")
@@ -776,6 +764,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			print(f"✅ SUCCESS: Thinking message updated with bot response!")
 			
 			# Emit bot processing end event
+			print(f"🔔 EMITTING bot_processing_end for channel {channel_id} (thinking message updated)")
 			frappe.publish_realtime(
 				"bot_processing_end",
 				{
@@ -804,6 +793,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			print(f"✅ SUCCESS: New bot response sent successfully!")
 			
 			# Emit bot processing end event
+			print(f"🔔 EMITTING bot_processing_end for channel {channel_id} (new message created)")
 			frappe.publish_realtime(
 				"bot_processing_end",
 				{
@@ -822,6 +812,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 		frappe.log_error(f"Error sending bot response: {str(e)}", "Bot Response Error")
 		
 		# Emit bot processing end event even on error
+		print(f"🔔 EMITTING bot_processing_end for channel {channel_id} (error occurred)")
 		frappe.publish_realtime(
 			"bot_processing_end",
 			{
