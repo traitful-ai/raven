@@ -1,4 +1,5 @@
 import json
+import time
 from datetime import timedelta
 
 import frappe
@@ -652,9 +653,12 @@ def send_thinking_message(channel_id, bot_raven_user):
 
 def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=None):
 	"""
-	Send a dummy bot response for testing purposes
+	Send a bot response by calling the chat API and polling for completion
 	"""
-	print(f"🤖 SENDING DUMMY RESPONSE: Bot {bot_name} responding to '{user_message}'")
+	print(f"🤖 SENDING BOT RESPONSE: Bot {bot_name} responding to '{user_message}'")
+	
+	# Initialize default response text
+	response_text = "Sorry, I'm having trouble processing your request right now."
 	
 	# Make synchronous HTTP request
 	try:
@@ -669,13 +673,16 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			},
 			timeout=10.0
 		)
-		response.raise_for_status()  # Raise an exception for bad status codes
+		response.raise_for_status()  # Raise an exception for bad status codes		
 		response_data = response.json()
+		print(f"📤 POST RESPONSE: {response_data}")
+		
 		message_id = response_data.get("message_id")
 		user_id = response_data.get("user_id")
 		thread_id = response_data.get("thread_id")
 		
 		if not message_id or not user_id or not thread_id:
+			print("❌ ERROR: Missing required fields in API response")
 			response_text = "Error: Invalid response from API"
 		else:
 			# Poll the message status until completed
@@ -683,7 +690,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			poll_interval = 2  # Seconds between polls
 			
 			for attempt in range(max_attempts):
-				print(f'ATTEMPTING TO POLL {attempt + 1}')
+				print(f'🔄 POLLING ATTEMPT {attempt + 1}/{max_attempts}')
 				try:
 					status_response = httpx.get(
 						f"http://chat.freightify.traitful.ai/api/v1/chat/{user_id}/{thread_id}/messages/{message_id}",
@@ -695,17 +702,19 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 					)
 					status_response.raise_for_status()
 					status_data = status_response.json()
+					print(f"📥 POLL RESPONSE: {status_data}")
 					
-					if status_data.get("status") == "completed":
+					status = status_data.get("status")
+					if status == "completed":
 						response_text = status_data.get("response_content", "No response content available")
 						print(f"✅ POLLING COMPLETE: Got response after {attempt + 1} attempts")
 						break
-					elif status_data.get("status") == "failed":
+					elif status == "failed":
 						response_text = "Sorry, I encountered an error processing your request."
 						print(f"❌ POLLING FAILED: Request failed after {attempt + 1} attempts")
 						break
 					else:
-						print(f"🔄 POLLING ATTEMPT {attempt + 1}: Status is '{status_data.get('status')}', continuing...")
+						print(f"⏳ POLLING: Status is '{status}', continuing...")
 						if attempt < max_attempts - 1:  # Don't sleep on the last attempt
 							time.sleep(poll_interval)
 				
@@ -714,29 +723,23 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 					if attempt == max_attempts - 1:  # Last attempt
 						response_text = "Sorry, I'm having trouble processing your request right now."
 						break
-					time.sleep(poll_interval)
+					if attempt < max_attempts - 1:
+						time.sleep(poll_interval)
 			else:
 				# This executes if the loop completed without breaking
 				response_text = "Sorry, your request is taking longer than expected to process."
 				print(f"⏰ POLLING TIMEOUT: Reached maximum attempts ({max_attempts})")
-		if response.status_code == 200:
-			response_text = response.text
-		else:
-			response_text = f"API returned status code: {response.status_code}"
+				
 	except Exception as e:
 		print(f"❌ ERROR making HTTP request: {str(e)}")
 		frappe.log_error(f"Error making HTTP request: {str(e)}", "Bot HTTP Request Error")
+		response_text = "Sorry, I'm experiencing technical difficulties."
 	
 	# Get the bot's Raven User ID
 	bot_raven_user = frappe.db.get_value("Raven Bot", bot_name, "raven_user")
 	if not bot_raven_user:
 		print(f"❌ ERROR: Could not find raven_user for bot {bot_name}")
 		return
-	
-	# # Create a simple response based on the user's message
-	# if "hello" in user_message.lower() or "hi" in user_message.lower():
-	# 	response_text = f"👋 Hello! I'm Freightify AI. How can I help you today?"
-
 	
 	# Update the thinking message if it exists, otherwise create a new message
 	try:
@@ -745,6 +748,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			thinking_doc = frappe.get_doc("Raven Message", thinking_message_id)
 			thinking_doc.text = response_text
 			thinking_doc.save(ignore_permissions=True)
+			frappe.db.commit()  # Ensure the change is committed
 			print(f"✅ SUCCESS: Thinking message updated with bot response!")
 			return thinking_message_id
 		else:
@@ -759,9 +763,11 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 				"bot": bot_raven_user
 			})
 			response_doc.insert(ignore_permissions=True)
+			frappe.db.commit()  # Ensure the change is committed
 			print(f"✅ SUCCESS: New bot response sent successfully!")
 			return response_doc.name
 		
 	except Exception as e:
 		print(f"❌ ERROR sending bot response: {str(e)}")
-		frappe.log_error(f"Error sending dummy bot response: {str(e)}", "Bot Response Error")
+		frappe.log_error(f"Error sending bot response: {str(e)}", "Bot Response Error")
+		return None
