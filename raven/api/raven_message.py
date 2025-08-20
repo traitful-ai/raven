@@ -156,6 +156,7 @@ def save_message(message_id, add=False):
 	Save the message as a bookmark
 	"""
 	from frappe.desk.like import toggle_like
+	import time
 
 	toggle_like("Raven Message", message_id, add)
 
@@ -657,10 +658,66 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 	
 	# Make synchronous HTTP request
 	try:
-		response = httpx.get(
-			"http://4.224.78.184/client_g73trn_1754370634/shipment/SGDEHAM016834",
+		response = httpx.post(
+			f"http://chat.freightify.traitful.ai/api/v1/chat/{frappe.session.user}/{channel_id}/messages",
+			headers={
+				"Authorization": "Bearer #3re15a8$0nDoWtrAItfu7(#a70k3N",
+				"Content-Type": "application/json"
+			},
+			json={
+				"content": user_message
+			},
 			timeout=10.0
 		)
+		response.raise_for_status()  # Raise an exception for bad status codes
+		response_data = response.json()
+		message_id = response_data.get("message_id")
+		user_id = response_data.get("user_id")
+		thread_id = response_data.get("thread_id")
+		
+		if not message_id or not user_id or not thread_id:
+			response_text = "Error: Invalid response from API"
+		else:
+			# Poll the message status until completed
+			max_attempts = 30  # Maximum polling attempts
+			poll_interval = 2  # Seconds between polls
+			
+			for attempt in range(max_attempts):
+				try:
+					status_response = httpx.get(
+						f"http://chat.freightify.traitful.ai/api/v1/chat/{user_id}/{thread_id}/messages/{message_id}",
+						headers={
+							"Authorization": "Bearer #3re15a8$0nDoWtrAItfu7(#a70k3N",
+							"Content-Type": "application/json"
+						},
+						timeout=10.0
+					)
+					status_response.raise_for_status()
+					status_data = status_response.json()
+					
+					if status_data.get("status") == "completed":
+						response_text = status_data.get("response_content", "No response content available")
+						print(f"✅ POLLING COMPLETE: Got response after {attempt + 1} attempts")
+						break
+					elif status_data.get("status") == "failed":
+						response_text = "Sorry, I encountered an error processing your request."
+						print(f"❌ POLLING FAILED: Request failed after {attempt + 1} attempts")
+						break
+					else:
+						print(f"🔄 POLLING ATTEMPT {attempt + 1}: Status is '{status_data.get('status')}', continuing...")
+						if attempt < max_attempts - 1:  # Don't sleep on the last attempt
+							time.sleep(poll_interval)
+				
+				except Exception as poll_error:
+					print(f"❌ ERROR during polling attempt {attempt + 1}: {str(poll_error)}")
+					if attempt == max_attempts - 1:  # Last attempt
+						response_text = "Sorry, I'm having trouble processing your request right now."
+						break
+					time.sleep(poll_interval)
+			else:
+				# This executes if the loop completed without breaking
+				response_text = "Sorry, your request is taking longer than expected to process."
+				print(f"⏰ POLLING TIMEOUT: Reached maximum attempts ({max_attempts})")
 		if response.status_code == 200:
 			response_text = response.text
 		else:
