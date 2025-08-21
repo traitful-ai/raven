@@ -663,6 +663,58 @@ def send_thinking_message(channel_id, bot_raven_user):
 		return None
 
 
+def process_bot_file_attachments(file_content, channel_id, bot_doc):
+	"""
+	Process file_content array from bot API response and create file attachments
+	Each file object should have: {'filename': 'file.pdf', 'base64object': 'base64string'}
+	"""
+	import base64
+	
+	file_message_ids = []
+	
+	for file_obj in file_content:
+		try:
+			filename = file_obj.get('filename', 'untitled_file')
+			base64_string = file_obj.get('base64object', '')
+			
+			if not base64_string:
+				print(f"⚠️ WARNING: No base64 content found for file {filename}")
+				continue
+				
+			print(f"📎 PROCESSING FILE: {filename}")
+			
+			# Decode base64 content
+			file_data = base64.b64decode(base64_string)
+			
+			# Create a file document using the same pattern as the upload_file_with_message API
+			file_doc = frappe.get_doc({
+				"doctype": "File",
+				"file_name": filename,
+				"content": file_data,
+				"is_private": 1,
+				"attached_to_doctype": "Raven Message",
+				"attached_to_field": "file"
+			})
+			file_doc.insert(ignore_permissions=True)
+			
+			# Send file message using bot's send_message method
+			message_id = bot_doc.send_message(
+				channel_id=channel_id,
+				text=f"📎 {filename}",
+				file=file_doc.file_url
+			)
+			
+			file_message_ids.append(message_id)
+			print(f"✅ FILE MESSAGE SENT: {filename} as message {message_id}")
+			
+		except Exception as e:
+			print(f"❌ ERROR processing file {file_obj.get('filename', 'unknown')}: {str(e)}")
+			frappe.log_error(f"Error processing bot file attachment: {str(e)}", "Bot File Processing Error")
+			continue
+	
+	return file_message_ids
+
+
 def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=None):
 	"""
 	Send a bot response by calling the chat API and polling for completion
@@ -719,10 +771,13 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 					status = status_data.get("status")
 					if status == "completed":
 						response_text = status_data.get("response_content", "No response content available")
+						file_content = status_data.get("file_content", [{'filename': 'test.pdf', 'base64object':'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b2JqCjYgMCBvYmo8PC9UeXBlL1BhZ2VzL0NvdW50IDIvS2lkc1s3IDAgUiA5IDAgUl0+PgplbmRvYmoKMTAgMCBvYmo8PC9UeXBlL0NhdGFsb2cvUGFnZXMgNiAwIFI+PgplbmRvYmoKMTEgMCBvYmo8PC9DcmVhdG9yKEhZVU5EQUkgTUVSQ0hBTlQgTUFSSU5FIENPLixMVEQpL1Byb2R1Y2VyKGlUZXh0IDIuMC4yIFwoYnkgbG93YWdpZS5jb21cKSkvVGl0bGUoQ0FSR08gQVJSSVZBTCBOT1RJQ0UpL1N1YmplY3QoREVXQjEyMjkzMzApL01vZERhdGUoRDoyMDE2MTExNjEzMjQwNSswOScwMCcpL0F1dGhvcihIWVVOREFJIE1FUkNIQU5UIE1BUklORSBDTy4sTFREKS9DcmVhdGlvbkRhdGUoRDoyMDE2MTExNjEzMjQwNSswOScwMCcpPj4KZW5kb2JqCnhyZWYKMCAxMgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwNTMxMiAwMDAwMCBuIAowMDAwMDA1MjI0IDAwMDAwIG4gCjAwMDAwMDUxMzQgMDAwMDAgbiAKMDAwMDAwMzAxMiAwMDAwMCBuIAowMDAwMDA1NDA0IDAwMDAwIG4gCjAwMDAwMDQ0ODEgMDAwMDAgbiAKMDAwMDAwNDY3OCAwMDAwMCBuIAowMDAwMDA0OTc4IDAwMDAwIG4gCjAwMDAwMDU0NjAgMDAwMDAgbiAKMDAwMDAwNTUwNSAwMDAwMCBuIAp0cmFpbGVyCjw8L1Jvb3QgMTAgMCBSL0lEIFs8ZjNkZjQwNDU4MmE2ZDkzNjdjZTJkMDY3NWU3NDhiMjQ+PDZiMWUyZDg0YWY3NzhhYWY1ZTI4ZTAxZjgyMGRmNmMwPl0vSW5mbyAxMSAwIFIvU2l6ZSAxMj4+CnN0YXJ0eHJlZgo1NzY3CiUlRU9GCg=='}])
 						print(f"✅ POLLING COMPLETE: Got response after {attempt + 1} attempts")
+						print(f"📎 FILES FOUND: {len(file_content)} files in response")
 						break
 					elif status == "failed":
 						response_text = "Sorry, I encountered an error processing your request."
+						file_content = []
 						print(f"❌ POLLING FAILED: Request failed after {attempt + 1} attempts")
 						break
 					else:
@@ -740,12 +795,14 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 			else:
 				# This executes if the loop completed without breaking
 				response_text = "Sorry, your request is taking longer than expected to process."
+				file_content = []
 				print(f"⏰ POLLING TIMEOUT: Reached maximum attempts ({max_attempts})")
 				
 	except Exception as e:
 		print(f"❌ ERROR making HTTP request: {str(e)}")
 		frappe.log_error(f"Error making HTTP request: {str(e)}", "Bot HTTP Request Error")
 		response_text = "Sorry, I'm experiencing technical difficulties."
+		file_content = []
 	
 	# Get the bot's Raven User ID
 	bot_raven_user = frappe.db.get_value("Raven Bot", bot_name, "raven_user")
@@ -757,6 +814,12 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 	try:
 		# Get the bot document to use its send_message method with markdown support
 		bot_doc = frappe.get_doc("Raven Bot", bot_name)
+		
+		# Process file attachments if any
+		file_message_ids = []
+		if file_content and len(file_content) > 0:
+			print(f"📎 PROCESSING {len(file_content)} file attachments")
+			file_message_ids = process_bot_file_attachments(file_content, channel_id, bot_doc)
 		
 		if thinking_message_id:
 			# Replace the thinking message with the actual response using markdown
@@ -781,7 +844,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 				after_commit=True
 			)
 			
-			return thinking_message_id
+			return {"message_id": thinking_message_id, "file_message_ids": file_message_ids}
 		else:
 			# Create a new message using the bot's send_message method with markdown support
 			message_id = bot_doc.send_message(
@@ -805,7 +868,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 				after_commit=True
 			)
 			
-			return message_id
+			return {"message_id": message_id, "file_message_ids": file_message_ids}
 		
 	except Exception as e:
 		print(f"❌ ERROR sending bot response: {str(e)}")
