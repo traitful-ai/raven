@@ -26,7 +26,7 @@ import { useSWRConfig } from "frappe-react-sdk"
 import { GetMessagesResponse } from "./useChatStream"
 import { useIsMobile } from "@/hooks/useMediaQuery"
 import { useCargoWiseBotDetection } from "@/hooks/useCargoWiseBotDetection"
-import { ShipmentPanel } from "../ShipmentPanel/ShipmentPanel"
+// import { ShipmentPanel } from "../ShipmentPanel/ShipmentPanel" // Temporarily hidden
 
 const COOL_PLACEHOLDERS = [
     "Delivering messages atop dragons 🐉 is available on a chargeable basis.",
@@ -247,9 +247,10 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
                     pinnedMessagesString={channelData.pinned_messages_string}
                     replyToMessage={handleReplyAction}
                 />
-                {isCargoWiseBotChannel && (
+                {/* Temporarily hidden - will be shown later once feature is complete */}
+                {/* {isCargoWiseBotChannel && (
                     <ShipmentPanel channelID={channelData.name} />
-                )}
+                )} */}
                 {canUserSendMessage &&
                     <Stack>
                         <TypingIndicator channel={channelData.name} />
