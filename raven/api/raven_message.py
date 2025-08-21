@@ -692,10 +692,10 @@ def process_bot_file_attachments(file_content, channel_id, bot_doc):
 				"file_name": filename,
 				"content": file_data,
 				"is_private": 1,
-				"attached_to_doctype": "Raven Message",
-				"attached_to_field": "file"
 			})
 			file_doc.insert(ignore_permissions=True)
+			
+			print(f"📁 FILE CREATED: {file_doc.file_url} for {filename}")
 			
 			# Send file message using bot's send_message method
 			message_id = bot_doc.send_message(
