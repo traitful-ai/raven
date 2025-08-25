@@ -727,7 +727,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 	# Make synchronous HTTP request
 	try:
 		response = httpx.post(
-			f"http://chat.freightify.traitful.ai/api/v1/chat/{frappe.session.user}/{channel_id}/messages",
+			f"http://52.140.80.226/api/v1/chat/{frappe.session.user}/{channel_id}/messages",
 			headers={
 				"Authorization": "Bearer #3re15a8$0nDoWtrAItfu7(#a70k3N",
 				"Content-Type": "application/json"
@@ -757,7 +757,7 @@ def send_bot_response(channel_id, bot_name, user_message, thinking_message_id=No
 				print(f'🔄 POLLING ATTEMPT {attempt + 1}/{max_attempts}')
 				try:
 					status_response = httpx.get(
-						f"http://chat.freightify.traitful.ai/api/v1/chat/{user_id}/{thread_id}/messages/{message_id}",
+						f"http://52.140.80.226/api/v1/chat/{user_id}/{thread_id}/messages/{message_id}",
 						headers={
 							"Authorization": "Bearer #3re15a8$0nDoWtrAItfu7(#a70k3N",
 							"Content-Type": "application/json"
